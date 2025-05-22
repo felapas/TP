@@ -12,20 +12,20 @@
 
 // --- Static Helper Functions (defined at the top) ---
 
-static float calculaCustoDetalhado(const sortperf_t* s, float a, float b, float c) {
+static double calculaCustoDetalhado(const sortperf_t* s, double a, double b, double c) {
     return a * s->comps + b * s->moves + c * s->calls;
 }
 
 // This helper was used in the refactored determinaLimiarParticao.
 // If determinaLimiarQuebras needs similar logic, it can use it or have its own.
-static void imprimeEstatisticasMPS(int mps, float custo, const sortperf_t* s) {
+static void imprimeEstatisticasMPS(int mps, double custo, const sortperf_t* s) {
     std::cout << "mps " << mps << " cost " << std::fixed << std::setprecision(9) << custo
               << " cmp " << s->comps << " move " << s->moves
               << " calls " << s->calls << std::endl;
 }
 
 // This helper was used in the refactored determinaLimiarParticao.
-static int encontraIndiceMPMenorCusto(int numMPSTestados, const float custosCalculados[]) {
+static int encontraIndiceMPMenorCusto(int numMPSTestados, const double custosCalculados[]) {
     if (numMPSTestados <= 0) {
         return -1;
     }
@@ -84,8 +84,8 @@ template<typename T>
 int determinaLimiarParticao(
     Vetor<T>& V,
     int tam,
-    float a, float b, float c,
-    float limiarCusto
+    double a, double b, double c,
+    double limiarCusto
 ) {
     int minMPS = 2;
     int maxMPS = tam;
@@ -103,7 +103,7 @@ int determinaLimiarParticao(
         if (passoMPS == 0) passoMPS = 1;
 
         int mpsValores[6];
-        float custos[6];
+        double custos[6];
         int numMPSTestados = 0;
 
         // Gera mpsValores para testar
@@ -148,8 +148,8 @@ int determinaLimiarParticao(
         // O diffCusto deve ser sobre os custos destes valores na *iteração atual*.
 
         // *** CORREÇÃO DO CÁLCULO DE diffCusto ***
-        float custo_no_novo_min_mps = -1.0f;
-        float custo_no_novo_max_mps = -1.0f;
+        double custo_no_novo_min_mps = -1.0f;
+        double custo_no_novo_max_mps = -1.0f;
 
         // Encontra os custos correspondentes a newMinMPS_val e newMaxMPS_val
         // DENTRO dos mpsValores e custos da iteração ATUAL.
@@ -196,7 +196,7 @@ int determinaLimiarParticao(
         
         std::cout << "nummps " << numMPSTestados
                   << " limParticao " << melhorMPSGlobal // melhorMPSGlobal é o MPS com menor custo na iteração
-                  << " mpsdiff " << std::fixed << std::setprecision(9) << diffCusto << std::endl;
+                  << " mpsdiff " << std::fixed << std::setprecision(6) << diffCusto << std::endl;
         iteracao++;
     }
     return melhorMPSGlobal;
@@ -232,8 +232,8 @@ template<typename T>
 int determinaLimiarQuebras(
     Vetor<T>& V_modelo_original_sorted, // Vetor modelo já ordenado
     int original_tam,                   // Renomeado para clareza
-    float a, float b, float c,
-    float limiarCustoConvergencia,
+    double a, double b, double c,
+    double limiarCustoConvergencia,
     int minTamParticao_calibrated,
     long seed
 ) {
@@ -254,7 +254,7 @@ int determinaLimiarQuebras(
     // Se, após ajuste, a faixa [minLQ, maxLQ_val_para_teste] for inválida ou muito pequena
     // para o loop de refinamento, o loop while pode não executar.
     int melhorLQGlobal = (minLQ <= maxLQ_val_para_teste) ? minLQ : 0;
-    float minAbsDiffGlobal = std::numeric_limits<float>::infinity();
+    double minAbsDiffGlobal = std::numeric_limits<double>::infinity();
     
 
 
@@ -265,37 +265,56 @@ int determinaLimiarQuebras(
     // Renomeia maxLQ_val_para_teste para maxLQ para uso no loop, mantendo minLQ
     int current_minLQ = minLQ;
     int current_maxLQ = maxLQ_val_para_teste;
-
-
+    int numLQTestadosNaIteracaoAnterior = 6;
+    
     // Loop de refinamento iterativo
-    while (diffVariacaoAbsDiff > limiarCustoConvergencia && (current_maxLQ - current_minLQ) >= 5) {
+    while (diffVariacaoAbsDiff > limiarCustoConvergencia && numLQTestadosNaIteracaoAnterior > 5) {
         std::cout << "iter " << iteracao << std::endl;
 
         int passoLQ = (current_maxLQ - current_minLQ) / 5;
         if (passoLQ == 0) {
             passoLQ = 1;
         }
-
-        int lqValoresTest[6];
-        float custosIS[6];
-        float custosQS[6];
-        float absDiffsCost[6];
+        const int MAX_LQ_PONTOS_TESTE = 100;
+        int lqValoresTest[MAX_LQ_PONTOS_TESTE];
+        double custosIS[MAX_LQ_PONTOS_TESTE];
+        double custosQS[MAX_LQ_PONTOS_TESTE];
+        double absDiffsCost[MAX_LQ_PONTOS_TESTE];
         int numLQTestados = 0;
 
         // Gera valores candidatos de LQ para testar
-        for (int lq_cand_val = current_minLQ; lq_cand_val <= current_maxLQ && numLQTestados < 6; lq_cand_val += passoLQ) {
-            lqValoresTest[numLQTestados++] = lq_cand_val;
-        }
+        for (int lq_cand_val = current_minLQ; lq_cand_val <= current_maxLQ; lq_cand_val += passoLQ) {
+    if (numLQTestados < MAX_LQ_PONTOS_TESTE) {
+        lqValoresTest[numLQTestados++] = lq_cand_val;
+    } else {
+        // Se o número de candidatos exceder o limite, não adiciona mais
+        break;
+    }
+}
         if (numLQTestados > 0 && numLQTestados < 6 && lqValoresTest[numLQTestados-1] < current_maxLQ) {
              bool maxLQAlreadyTested = false;
              for(int k=0; k<numLQTestados; ++k) if(lqValoresTest[k] == current_maxLQ) {maxLQAlreadyTested = true; break;}
              if(!maxLQAlreadyTested) lqValoresTest[numLQTestados++] = current_maxLQ;
         }
-        if (numLQTestados == 0 && (current_maxLQ - current_minLQ) < 5 && (current_maxLQ - current_minLQ) >=0 ) {
-            for (int lq_cand_val = current_minLQ; lq_cand_val <= current_maxLQ && numLQTestados < 6; ++lq_cand_val) {
-                lqValoresTest[numLQTestados++] = lq_cand_val;
-            }
+        if (numLQTestados == 0 && (current_maxLQ - current_minLQ) < 5 && (current_maxLQ - current_minLQ) >= 0) {
+    // Se passoLQ era > (max-min), o loop acima pode não ter rodado.
+    // Preenche com todos os pontos possíveis na faixa pequena, respeitando o limite do array.
+    int tempPasso = 1; // Para faixas pequenas, testar todos os pontos
+    for (int lq_cand_val = current_minLQ; lq_cand_val <= current_maxLQ; lq_cand_val += tempPasso) {
+        if (numLQTestados < MAX_LQ_PONTOS_TESTE) {
+            lqValoresTest[numLQTestados++] = lq_cand_val;
+        } else {
+            break;
         }
+    }
+}
+
+        if (numLQTestados == 0 && current_minLQ <= current_maxLQ) {
+    if (numLQTestados < MAX_LQ_PONTOS_TESTE) { // Verifica se há espaço
+       lqValoresTest[numLQTestados++] = current_minLQ;
+    }
+}
+
         if (numLQTestados == 0) break;
 
 
@@ -333,7 +352,7 @@ int determinaLimiarQuebras(
 
         int indiceMelhorLQ_iter = 0;
         if (numLQTestados > 0) {
-            float minAbsDiff_iter_val = absDiffsCost[0];
+            double minAbsDiff_iter_val = absDiffsCost[0];
             for (int k = 1; k < numLQTestados; ++k) {
                 if (absDiffsCost[k] < minAbsDiff_iter_val) {
                     minAbsDiff_iter_val = absDiffsCost[k];
@@ -363,8 +382,8 @@ int determinaLimiarQuebras(
       // Deve ser a diferença absoluta dos CUSTOS DO INSERTIONSORT (custosIS)
         // nos extremos da nova faixa de busca (newMinLQ_val, newMaxLQ_val).
 
-        float is_cost_at_new_min_lq = -1.0f;
-        float is_cost_at_new_max_lq = -1.0f;
+        double is_cost_at_new_min_lq = -1.0f;
+        double is_cost_at_new_max_lq = -1.0f;
 
         // Encontra os custos de InsertionSort correspondentes a newMinLQ_val e newMaxLQ_val
         // DENTRO dos lqValoresTest e custosIS da iteração ATUAL.
@@ -397,6 +416,8 @@ int determinaLimiarQuebras(
         current_minLQ = newMinLQ_val; // current_minLQ e current_maxLQ são os que vc usa no começo do while
         current_maxLQ = newMaxLQ_val;
 
+        numLQTestadosNaIteracaoAnterior = numLQTestados;
+
         // Garante limites
         if (current_minLQ < minLQ) current_minLQ = minLQ; // Não ir abaixo do mínimo absoluto
         if (current_maxLQ > maxLQ_val_para_teste) current_maxLQ = maxLQ_val_para_teste; // Não ir acima do máximo absoluto
@@ -404,7 +425,7 @@ int determinaLimiarQuebras(
         
         std::cout << "numlq " << numLQTestados
                   << " limQuebras " << lq_iter_best_val 
-                  << " lqdiff " << std::fixed << std::setprecision(9) << diffVariacaoAbsDiff << std::endl;
+                  << " lqdiff " << std::fixed << std::setprecision(6) << diffVariacaoAbsDiff << std::endl;
         iteracao++;
     }
     return melhorLQGlobal;
@@ -412,15 +433,15 @@ int determinaLimiarQuebras(
 
 
 // --- Explicit Instantiations (at the end of the file) ---
-template int determinaLimiarParticao<int>(Vetor<int>&, int, float, float, float, float);
+template int determinaLimiarParticao<int>(Vetor<int>&, int, double, double, double, double);
 // No explicit instantiation for non-template calculaNovaFaixa
 
 template void shuffleVector<int>(Vetor<int>& vet, int size, int numShuffle, long seed);
 template int determinaLimiarQuebras<int>(
     Vetor<int>& V_modelo_original_sorted,
     int tam,
-    float a, float b, float c,
-    float limiarCustoConvergencia,
+    double a, double b, double c,
+    double limiarCustoConvergencia,
     int minTamParticao_calibrated,
     long seed
 );

@@ -25,8 +25,8 @@ template<typename T>
 int determinaLimiarParticao(
     Vetor<T>& V,
     int tam,
-    float a, float b, float c,
-    float limiarCusto
+    double a, double b, double c,
+    double limiarCusto
 );
 
 // Declaração de calculaNovaFaixa (não-template)
@@ -52,8 +52,8 @@ template<typename T>
 int determinaLimiarQuebras(
     Vetor<T>& V_modelo_original_sorted,
     int tam,
-    float a, float b, float c,
-    float limiarCustoConvergencia,
+    double a, double b, double c,
+    double limiarCustoConvergencia,
     int minTamParticao_calibrated,
     long seed
 );
