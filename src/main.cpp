@@ -4,7 +4,10 @@
 #include <algorithm> // Para std::sort, se usado para V_modelo_sorted
 #include <cstdlib>   // Para std::stol, std::stof, std::stoi
 #include <limits>    // Para std::numeric_limits (alternativa a INFINITY de cmath)
-
+#include <cmath>    // Para std::isinf (se necessário)
+#include <exception> // Para std::exception
+#include <stdexcept> // Para std::runtime_error
+#include <ctime>     // Para std::time, se necessário
 
 #include "../include/Vetor.hpp"
 #include "../include/Estatisticas.hpp"

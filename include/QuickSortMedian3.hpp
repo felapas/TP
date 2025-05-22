@@ -9,11 +9,10 @@ template<typename T>
 void swap(T* xp, T* yp, sortperf_t* s);
 
 template<typename T>
-T median(const T& pa, const T& pb, const T& pc, sortperf_t* s);
+T median(const T& a, const T& b, const T& c);
 
 template<typename T>
 void partition3(Vetor<T>& A, int l, int r, int* i, int* j, sortperf_t* s);
-
 
 // Modificado: adicionado minTamParticao
 template<typename T>

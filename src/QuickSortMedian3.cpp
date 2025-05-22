@@ -14,33 +14,21 @@ void swap(T* xp, T* yp, sortperf_t* s) {
     incmove(s, 3);
 }
 
+// Implementação da função para calcular a mediana de 3 elementos (exemplo, mantenha a sua)
 template<typename T>
-T median(const T& pa, const T& pb, const T& pc, sortperf_t* s) {
-    // A lógica com if/else if/else para 3 comparações:
-    inccmp(s,1); // pa < pb
-    if (pa < pb) {
-        inccmp(s,1); // pb < pc
-        if (pb < pc) return pb; // pa < pb < pc
-        else { // pa < pb AND pc <= pb
-            inccmp(s,1); // pa < pc
-            if (pa < pc) return pc; // pa < pc <= pb
-            else return pa;       // pc <= pa < pb
-        }
-    } else { // pb <= pa
-        inccmp(s,1); // pa < pc
-        if (pa < pc) return pa; // pb <= pa < pc
-        else { // pb <= pa AND pc <= pa
-            inccmp(s,1); // pb < pc
-            if (pb < pc) return pc; // pb < pc <= pa
-            else return pb;       // pc <= pb <= pa
-        }
-    }
+T median(const T& a, const T& b, const T& c) {
+    if ((a <= b) && (b <= c)) return b;
+    if ((a <= c) && (c <= b)) return c;
+    if ((b <= a) && (a <= c)) return a;
+    if ((b <= c) && (c <= a)) return c;
+    if ((c <= a) && (a <= b)) return a;
+    return b;
 }
 
 // Implementação da função para realizar a partição (exemplo, mantenha a sua)
 template<typename T>
 void partition3(Vetor<T>& A, int l, int r, int* i, int* j, sortperf_t* s) {
-    T x = median(A[l], A[(l+r)/2], A[r], s); 
+    T x = median<T>(A[l], A[(l + r) / 2], A[r]);
     *i = l;
     *j = r;
     do {
@@ -92,7 +80,7 @@ void quickSort3(Vetor<T>& A, int l, int r, int minTamParticao, sortperf_t* s) {
 
 // Explicit template instantiations for int
 template void swap<int>(int* xp, int* yp, sortperf_t* s);
-template int median<int>(const int& pa, const int& pb, const int& pc, sortperf_t* s);
+template int median<int>(const int& a, const int& b, const int& c);
 template void partition3<int>(Vetor<int>& A, int l, int r, int* i, int* j, sortperf_t* s);
 // Modificado: Atualizar a instanciação explícita
 template void quickSort3<int>(Vetor<int>& A, int l, int r, int minTamParticao, sortperf_t* s);
