@@ -1,10 +1,26 @@
 #ifndef CALIBRADOR_HPP
 #define CALIBRADOR_HPP
 
-#include "Vetor.hpp"       // For Vetor<T> type used in function signatures
-#include "Estatisticas.hpp"  // For sortperf_t context
+#include "Vetor.hpp"       // Para Vetor<T>
+#include "Estatisticas.hpp"  // Para sortperf_t (contexto)
 
-// Declares the function to determine the optimal minimum partition size for QuickSort.
+// Definição da função template calcularNumeroQuebras movida para o header
+template<typename T>
+int calcularNumeroQuebras(const Vetor<T>& V, int tam) {
+    if (tam <= 1) {
+        return 0;
+    }
+    int quebras = 0;
+    for (int k = 1; k < tam; ++k) {
+        // Assumindo que Vetor tem operator[] e T tem operator<
+        if (V[k] < V[k-1]) {
+            quebras++;
+        }
+    }
+    return quebras;
+}
+
+// Declaração de determinaLimiarParticao
 template<typename T>
 int determinaLimiarParticao(
     Vetor<T>& V,
@@ -13,8 +29,7 @@ int determinaLimiarParticao(
     float limiarCusto
 );
 
-// Declares calculaNovaFaixa as a NON-TEMPLATE function.
-// Its definition will be in Calibrador.cpp.
+// Declaração de calculaNovaFaixa (não-template)
 void calculaNovaFaixa(
     int indiceMelhor,
     int numMPS,
@@ -23,7 +38,7 @@ void calculaNovaFaixa(
     int& newMaxMPS
 );
 
-// Declares the function to shuffle a vector.
+// Declaração de shuffleVector
 template<typename T>
 void shuffleVector(
     Vetor<T>& vet,
@@ -32,7 +47,7 @@ void shuffleVector(
     long seed
 );
 
-// Declares the function to determine the optimal threshold for the number of breaks.
+// Declaração de determinaLimiarQuebras
 template<typename T>
 int determinaLimiarQuebras(
     Vetor<T>& V_modelo_original_sorted,
