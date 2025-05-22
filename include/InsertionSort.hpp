@@ -8,7 +8,4 @@
 template<typename T>
 void insertionSort(Vetor<T>& v, int l, int r, sortperf_t* s);
 
-// Inclui implementações do template
-#include "InsertionSort.ipp"
-
 #endif // INSERTIONSORT_HPP

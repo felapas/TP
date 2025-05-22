@@ -1,10 +1,11 @@
+#include "../include/QuickSortMedian3.hpp"
+#include "../include/Estatisticas.hpp"
+#include "../include/Vetor.hpp"
+#include "../include/InsertionSort.hpp" // Necessário para chamar insertionSort
 
-#ifndef QUICKSORTMEDIAN3_IPP
-#define QUICKSORTMEDIAN3_IPP
+// swap, median, partition3 permanecem os mesmos...
 
-#include "Estatisticas.hpp"
-
-// Implementação da função de troca
+// Implementação da função de troca (exemplo, mantenha a sua)
 template<typename T>
 void swap(T* xp, T* yp, sortperf_t* s) {
     T temp = *xp;
@@ -13,21 +14,33 @@ void swap(T* xp, T* yp, sortperf_t* s) {
     incmove(s, 3);
 }
 
-// Implementação da função para calcular a mediana de 3 elementos
 template<typename T>
-T median(const T& a, const T& b, const T& c) {
-    if ((a <= b) && (b <= c)) return b;
-    if ((a <= c) && (c <= b)) return c;
-    if ((b <= a) && (a <= c)) return a;
-    if ((b <= c) && (c <= a)) return c;
-    if ((c <= a) && (a <= b)) return a;
-    return b;
+T median(const T& pa, const T& pb, const T& pc, sortperf_t* s) {
+    // A lógica com if/else if/else para 3 comparações:
+    inccmp(s,1); // pa < pb
+    if (pa < pb) {
+        inccmp(s,1); // pb < pc
+        if (pb < pc) return pb; // pa < pb < pc
+        else { // pa < pb AND pc <= pb
+            inccmp(s,1); // pa < pc
+            if (pa < pc) return pc; // pa < pc <= pb
+            else return pa;       // pc <= pa < pb
+        }
+    } else { // pb <= pa
+        inccmp(s,1); // pa < pc
+        if (pa < pc) return pa; // pb <= pa < pc
+        else { // pb <= pa AND pc <= pa
+            inccmp(s,1); // pb < pc
+            if (pb < pc) return pc; // pb < pc <= pa
+            else return pb;       // pc <= pb <= pa
+        }
+    }
 }
 
-// Implementação da função para realizar a partição usando a mediana de 3
+// Implementação da função para realizar a partição (exemplo, mantenha a sua)
 template<typename T>
 void partition3(Vetor<T>& A, int l, int r, int* i, int* j, sortperf_t* s) {
-    T x = median(A[l], A[(l + r) / 2], A[r]);
+    T x = median(A[l], A[(l+r)/2], A[r], s); 
     *i = l;
     *j = r;
     do {
@@ -42,25 +55,44 @@ void partition3(Vetor<T>& A, int l, int r, int* i, int* j, sortperf_t* s) {
         }
         inccmp(s, 1);
         if (*i <= *j) {
-            swap(&A[*i], &A[*j], s);
+            swap<T>(&A[*i], &A[*j], s);
             (*i)++;
             (*j)--;
         }
     } while (*i <= *j);
-
-    inccalls(s, 1);
+    inccalls(s, 1); // Mantendo a lógica original do seu partition3
 }
 
-// Implementação da função de ordenação QuickSort usando a mediana de 3
+
+// Modificado: quickSort3 agora é híbrido
 template<typename T>
-void quickSort3(Vetor<T>& A, int l, int r, sortperf_t* s) {
-    int i, j;
-    inccalls(s, 1);
-    if (l < r) {
-        partition3(A, l, r, &i, &j, s);
-        if (l < j) quickSort3(A, l, j, s);
-        if (i < r) quickSort3(A, i, r, s);
+void quickSort3(Vetor<T>& A, int l, int r, int minTamParticao, sortperf_t* s) {
+    if (l >= r) { // Condição base: partição vazia ou com um elemento
+        return;
+    }
+
+    // Se o tamanho da partição atual (r - l + 1) for menor ou igual ao limiar, use InsertionSort
+    if ((r - l + 1) <= minTamParticao) {
+        insertionSort(A, l, r, s); // insertionSort já incrementa suas próprias chamadas (inccalls)
+    } else {
+        // Caso contrário, prossiga com o particionamento do QuickSort
+        inccalls(s, 1); // Incrementa chamadas para esta etapa de QuickSort
+        int i, j;
+        partition3<T>(A, l, r, &i, &j, s); // partition3 também incrementa chamadas na sua implementação original
+
+        // Chamadas recursivas para as sub-partições
+        if (l < j) {
+            quickSort3<T>(A, l, j, minTamParticao, s);
+        }
+        if (i < r) {
+            quickSort3<T>(A, i, r, minTamParticao, s);
+        }
     }
 }
-;
-#endif
+
+// Explicit template instantiations for int
+template void swap<int>(int* xp, int* yp, sortperf_t* s);
+template int median<int>(const int& pa, const int& pb, const int& pc, sortperf_t* s);
+template void partition3<int>(Vetor<int>& A, int l, int r, int* i, int* j, sortperf_t* s);
+// Modificado: Atualizar a instanciação explícita
+template void quickSort3<int>(Vetor<int>& A, int l, int r, int minTamParticao, sortperf_t* s);

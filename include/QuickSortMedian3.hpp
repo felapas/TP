@@ -6,15 +6,17 @@
 
 // Declarações
 template<typename T>
-T median(const T& a, const T& b, const T& c);
+void swap(T* xp, T* yp, sortperf_t* s);
+
+template<typename T>
+T median(const T& pa, const T& pb, const T& pc, sortperf_t* s);
 
 template<typename T>
 void partition3(Vetor<T>& A, int l, int r, int* i, int* j, sortperf_t* s);
 
-template<typename T>
-void quickSort3(Vetor<T>& A, int l, int r, sortperf_t* s);
 
-// Inclui implementações de templates
-#include "QuicksortMedian3.ipp"
+// Modificado: adicionado minTamParticao
+template<typename T>
+void quickSort3(Vetor<T>& A, int l, int r, int minTamParticao, sortperf_t* s);
 
 #endif // QUICKSORTMEDIAN3_HPP
