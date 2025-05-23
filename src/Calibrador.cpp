@@ -80,6 +80,7 @@ void calculaNovaFaixa(
 }
 
 // --- Template function determinaLimiarParticao (Definição com correção no diffCusto) ---
+
 template<typename T>
 int determinaLimiarParticao(
     Vetor<T>& V,
@@ -87,121 +88,126 @@ int determinaLimiarParticao(
     double a, double b, double c,
     double limiarCusto
 ) {
-    int minMPS = 2;
-    int maxMPS = tam;
-    // Usar std::numeric_limits para INFINITY é mais portável se <limits> for incluído
-    // Mas cmath::INFINITY também é comum.
-    float diffCusto = std::numeric_limits<float>::infinity(); 
-    int melhorMPSGlobal = (tam > 0) ? minMPS : 0;
+    int minMPS_atual = 2;
+    int maxMPS_atual = tam;
+    float diffCusto_atual = std::numeric_limits<float>::infinity();
+    int melhorMPSGlobal = (tam > 0) ? minMPS_atual : 0;
     int iteracao = 0;
+
+    const int MAX_PONTOS_ARRAY = 10; // Tamanho do array para mpsValores e custos
+    int mpsValores[MAX_PONTOS_ARRAY];
+    double custos[MAX_PONTOS_ARRAY];
+    
+    int numMPSTestados_iter_anterior = MAX_PONTOS_ARRAY; // Para entrar no loop na primeira vez
 
     if (tam <= 1) return 0;
 
-    while (diffCusto > limiarCusto && (maxMPS - minMPS) >= 5) {
+    // Calcula o passoMPS uma vez por iteração, antes de gerar os pontos
+    int passoMPS_iter = (maxMPS_atual - minMPS_atual) / 5; // 5 é o divisor do PDF
+    if (passoMPS_iter == 0) passoMPS_iter = 1;
+
+    // Loop principal: usa contagem de pontos da iteração anterior
+    while (diffCusto_atual > limiarCusto && numMPSTestados_iter_anterior >= 5) {
         std::cout << "iter " << iteracao << std::endl;
-        int passoMPS = (maxMPS - minMPS) / 5;
-        if (passoMPS == 0) passoMPS = 1;
+        
+        int numMPSTestados_nesta_iter = 0; // Zera para a iteração corrente
 
-        int mpsValores[6];
-        double custos[6];
-        int numMPSTestados = 0;
+        // Geração de pontos simplificada, como em Ordenador.cpp
+        for (int mps_cand = minMPS_atual; mps_cand <= maxMPS_atual; mps_cand += passoMPS_iter) {
+            if (numMPSTestados_nesta_iter < MAX_PONTOS_ARRAY) {
+                mpsValores[numMPSTestados_nesta_iter] = mps_cand;
+                // O processamento do ponto (ordenação, cálculo de custo) vem depois
+                numMPSTestados_nesta_iter++;
+            } else {
+                break; // Evita estourar o array
+            }
+        }
+        
+        // Caso especial: se o loop não gerou nenhum ponto, mas a faixa é um único ponto.
+        if (numMPSTestados_nesta_iter == 0 && minMPS_atual == maxMPS_atual && MAX_PONTOS_ARRAY > 0) {
+            mpsValores[numMPSTestados_nesta_iter++] = minMPS_atual;
+        }
+        
+        // Se ainda nenhum ponto foi gerado (faixa inválida ou array muito pequeno), sair.
+        if (numMPSTestados_nesta_iter == 0) {
+            break;
+        }
 
-        // Gera mpsValores para testar
-        for (int t = minMPS; t <= maxMPS && numMPSTestados < 6; t += passoMPS) {
-            mpsValores[numMPSTestados++] = t;
-        }
-        // Garante que maxMPS seja testado se foi pulado e há espaço
-        if (numMPSTestados > 0 && numMPSTestados < 6 && mpsValores[numMPSTestados-1] < maxMPS) {
-             bool maxMPSTested = false;
-             for(int k=0; k<numMPSTestados; ++k) if(mpsValores[k] == maxMPS) {maxMPSTested = true; break;}
-             if(!maxMPSTested) mpsValores[numMPSTestados++] = maxMPS;
-        }
-        // Se o range é pequeno e o passo não gerou pontos, preenche com todos os pontos possíveis
-        if (numMPSTestados == 0 && (maxMPS - minMPS) < 5 && (maxMPS-minMPS) >=0) {
-            for (int t = minMPS; t <= maxMPS && numMPSTestados < 6; ++t) mpsValores[numMPSTestados++] = t;
-        }
-        if (numMPSTestados == 0) break; // Não pode prosseguir se nenhum MPS foi selecionado
-
-        // Testa cada currentMPS
-        for (int i = 0; i < numMPSTestados; ++i) {
+        // Testa cada currentMPS gerado
+        for (int i = 0; i < numMPSTestados_nesta_iter; ++i) {
             int currentMPS = mpsValores[i];
-            Vetor<T> copia(V); // Trabalha em uma cópia
+            Vetor<T> copia(V); 
             sortperf_t stats;
             stats_init(&stats);
             // limiarQuebras = 0 para focar na calibração de minTamParticao
             ordenadorUniversal(copia, copia.size(), currentMPS, 0, &stats);
             custos[i] = calculaCustoDetalhado(&stats, a, b, c);
-            imprimeEstatisticasMPS(currentMPS, custos[i], &stats); // Usa o helper estático
+            imprimeEstatisticasMPS(currentMPS, custos[i], &stats); 
         }
 
-        int indiceMelhorMPS = encontraIndiceMPMenorCusto(numMPSTestados, custos); // Usa o helper estático
-        if (indiceMelhorMPS == -1 && numMPSTestados > 0) indiceMelhorMPS = 0; // Default para o primeiro se todos os custos forem iguais/infinitos
-        else if (numMPSTestados == 0) break; // Segurança, não deveria acontecer se o if anterior pegou
-
+        int indiceMelhorMPS = encontraIndiceMPMenorCusto(numMPSTestados_nesta_iter, custos);
+        // Se todos os custos forem iguais/infinitos, ou se só houve um ponto.
+        if (indiceMelhorMPS == -1 && numMPSTestados_nesta_iter > 0) {
+             indiceMelhorMPS = 0;
+        } else if (numMPSTestados_nesta_iter == 0) { // Segurança
+            break;
+        }
+        
         melhorMPSGlobal = mpsValores[indiceMelhorMPS];
         
-        int newMinMPS_val, newMaxMPS_val;
-        calculaNovaFaixa(indiceMelhorMPS, numMPSTestados, mpsValores, newMinMPS_val, newMaxMPS_val);
+        // Lógica para determinar newMin_idx e newMax_idx para o cálculo de diffCusto
+        // e para definir a próxima faixa [minMPS_atual, maxMPS_atual]
+        // Isso espelha como Ordenador.cpp usa calculaNovaFaixa para obter índices
+        // e depois usa esses índices para pegar os custos e os novos limites de mps.
+        int newMin_idx, newMax_idx;
+        if (numMPSTestados_nesta_iter == 1) { // Faixa colapsou ou só um ponto testado
+            newMin_idx = 0;
+            newMax_idx = 0;
+        } else if (indiceMelhorMPS == 0) {
+            newMin_idx = 0;
+            newMax_idx = (numMPSTestados_nesta_iter > 2) ? 2 : numMPSTestados_nesta_iter - 1;
+        } else if (indiceMelhorMPS == numMPSTestados_nesta_iter - 1) {
+            newMax_idx = numMPSTestados_nesta_iter - 1;
+            newMin_idx = (numMPSTestados_nesta_iter - 3 >= 0) ? numMPSTestados_nesta_iter - 3 : 0;
+        } else {
+            newMin_idx = indiceMelhorMPS - 1;
+            newMax_idx = indiceMelhorMPS + 1;
+        }
+        // Ajustes de limite para os índices (importante se numMPSTestados_nesta_iter < 3)
+        newMin_idx = std::max(0, newMin_idx);
+        newMax_idx = std::min(numMPSTestados_nesta_iter - 1, newMax_idx);
+        if (newMin_idx > newMax_idx && numMPSTestados_nesta_iter > 0) newMin_idx = newMax_idx;
+
+
+        if (numMPSTestados_nesta_iter > 0) { // Apenas calcula se há pontos
+            diffCusto_atual = std::abs(custos[newMin_idx] - custos[newMax_idx]);
+            // Atualiza a faixa para a próxima iteração usando os VALORES dos mps nos índices determinados
+            minMPS_atual = mpsValores[newMin_idx];
+            maxMPS_atual = mpsValores[newMax_idx];
+        } else {
+            diffCusto_atual = 0.0; // Para o loop se não houver pontos
+        }
         
-        // Atualiza minMPS e maxMPS para a *próxima* iteração (ainda não usados para diffCusto atual)
-        // Estes são os valores que DEFINIRÃO a próxima faixa de busca.
-        // O diffCusto deve ser sobre os custos destes valores na *iteração atual*.
 
-        // *** CORREÇÃO DO CÁLCULO DE diffCusto ***
-        double custo_no_novo_min_mps = -1.0f;
-        double custo_no_novo_max_mps = -1.0f;
-
-        // Encontra os custos correspondentes a newMinMPS_val e newMaxMPS_val
-        // DENTRO dos mpsValores e custos da iteração ATUAL.
-        for (int k = 0; k < numMPSTestados; ++k) {
-            if (mpsValores[k] == newMinMPS_val) {
-                custo_no_novo_min_mps = custos[k];
-            }
-            if (mpsValores[k] == newMaxMPS_val) {
-                custo_no_novo_max_mps = custos[k];
-            }
-        }
-
-        if (custo_no_novo_min_mps != -1.0f && custo_no_novo_max_mps != -1.0f) {
-            diffCusto = std::abs(custo_no_novo_min_mps - custo_no_novo_max_mps);
-        } else if (newMinMPS_val == newMaxMPS_val && numMPSTestados > 0) { 
-            // Se a nova faixa colapsou para um único ponto que foi testado
-            diffCusto = 0.0; // Não há diferença de custo nos extremos da nova faixa
-        } else if (numMPSTestados <= 1 && iteracao > 0) {
-             // Se apenas um ponto foi testado na iteração atual (e não é a primeira iteração)
-             // o refinamento não pode continuar com base na diferença dos extremos.
-            diffCusto = 0.0; // Força a parada ou usa limiarCusto
-        }
-        else {
-            // Fallback: Se os custos para os novos limites não puderam ser encontrados (não deveria acontecer)
-            // ou se é a primeira iteração e apenas um ponto foi testado,
-            // usar a diferença dos extremos testados pode ser um fallback,
-            // mas o ideal é que newMinMPS_val e newMaxMPS_val sempre estejam em mpsValores.
-            // Se numMPSTestados > 1, podemos usar o diff dos extremos testados como um fallback mais robusto.
-            if (numMPSTestados > 1) {
-                 diffCusto = std::abs(custos[0] - custos[numMPSTestados - 1]);
-            } else {
-                 diffCusto = 0.0; // Para se apenas um ponto foi testado no total.
-            }
-        }
-
-        // Atualiza o range para a próxima iteração
-        minMPS = newMinMPS_val;
-        maxMPS = newMaxMPS_val;
-
-        // Garante limites práticos para MPS
-        if (minMPS < 2) minMPS = 2;
-        if (maxMPS > tam) maxMPS = tam;
-        if (maxMPS < minMPS) maxMPS = minMPS; // Garante que maxMPS não seja menor que minMPS
+        // Garante limites práticos para MPS para a PRÓXIMA iteração
+        if (minMPS_atual < 2) minMPS_atual = 2;
+        if (maxMPS_atual > tam) maxMPS_atual = tam; 
+        if (maxMPS_atual < minMPS_atual) maxMPS_atual = minMPS_atual; 
         
-        std::cout << "nummps " << numMPSTestados
-                  << " limParticao " << melhorMPSGlobal // melhorMPSGlobal é o MPS com menor custo na iteração
-                  << " mpsdiff " << std::fixed << std::setprecision(6) << diffCusto << std::endl;
+        // Recalcula passoMPS_iter para a PRÓXIMA iteração
+        passoMPS_iter = (maxMPS_atual - minMPS_atual) / 5;
+        if (passoMPS_iter == 0) passoMPS_iter = 1;
+        
+        std::cout << "nummps " << numMPSTestados_nesta_iter
+                  << " limParticao " << melhorMPSGlobal 
+                  << " mpsdiff " << std::fixed << std::setprecision(6) << diffCusto_atual << std::endl;
+        std::cout << std::endl; 
+        
+        numMPSTestados_iter_anterior = numMPSTestados_nesta_iter; // Guarda para a condição do while
         iteracao++;
     }
     return melhorMPSGlobal;
 }
-
 
 // --- Template function shuffleVector (Definition from your provided code) ---
 template<typename T>
@@ -268,7 +274,7 @@ int determinaLimiarQuebras(
     int numLQTestadosNaIteracaoAnterior = 6;
     
     // Loop de refinamento iterativo
-    while (diffVariacaoAbsDiff > limiarCustoConvergencia && numLQTestadosNaIteracaoAnterior > 5) {
+    while (diffVariacaoAbsDiff > limiarCustoConvergencia && numLQTestadosNaIteracaoAnterior >= 5) {
         std::cout << "iter " << iteracao << std::endl;
 
         int passoLQ = (current_maxLQ - current_minLQ) / 5;
@@ -426,6 +432,10 @@ int determinaLimiarQuebras(
         std::cout << "numlq " << numLQTestados
                   << " limQuebras " << lq_iter_best_val 
                   << " lqdiff " << std::fixed << std::setprecision(6) << diffVariacaoAbsDiff << std::endl;
+
+        if (diffVariacaoAbsDiff > limiarCustoConvergencia || numLQTestadosNaIteracaoAnterior > 5) {
+            std::cout << std::endl; 
+        }
         iteracao++;
     }
     return melhorLQGlobal;
